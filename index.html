@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mexico-City · Meine Karte</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --lake:#9c1f56;        /* Rosa Mexicano dunkel (CDMX-Pink) */
+    --lake-dark:#64123a;
+    --paper:#fbf8f2;
+    --ink:#20242a;
+    --must:#c8472e;        /* Signalrot, Must-see */
+    --kayak:#0e7c86;       /* Wasser-Petrol */
+    --bar:#b07c10;         /* Cantina-Bernstein */
+    --mus:#6b5b95;         /* Museums-Violett */
+    --alt:#c2417f;         /* Alternativ-Magenta */
+    --rnd:#4a7c59;         /* Random-Grün */
+    --des:#46628c;         /* Architektur-Stahlblau */
+    --radius:16px;
+    --shadow:0 6px 24px rgba(100,18,58,.18);
+    --sat:env(safe-area-inset-top,0px);
+    --sab:env(safe-area-inset-bottom,0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--paper);
+  }
+  #map{position:fixed;inset:0;z-index:1;background:#e9e2d8}
+
+  /* ---------- Header ---------- */
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:20;
+    padding:calc(var(--sat) + 10px) 14px 0;
+    pointer-events:none;
+  }
+  .title-card{
+    pointer-events:auto;
+    background:var(--lake);color:#fff;
+    border-radius:var(--radius);
+    padding:12px 16px 10px;
+    box-shadow:var(--shadow);
+  }
+  .title-card h1{
+    font-size:1.05rem;font-weight:700;letter-spacing:.01em;line-height:1.2;
+  }
+  .title-card p{
+    font-size:.72rem;opacity:.85;margin-top:2px;
+  }
+  /* Filter chips */
+  .chips{
+    pointer-events:auto;
+    display:flex;gap:8px;margin-top:10px;
+    overflow-x:auto;scrollbar-width:none;
+    padding-bottom:4px;
+  }
+  .chips::-webkit-scrollbar{display:none}
+  .chip{
+    flex:0 0 auto;display:flex;align-items:center;gap:6px;
+    border:none;border-radius:999px;
+    padding:9px 14px;font-size:.82rem;font-weight:600;
+    background:#fff;color:var(--ink);
+    box-shadow:0 2px 10px rgba(100,18,58,.14);
+    cursor:pointer;transition:transform .12s ease,opacity .15s ease;
+  }
+  .chip:active{transform:scale(.95)}
+  .chip .dot{width:10px;height:10px;border-radius:50%}
+  .chip[data-cat="must"] .dot{background:var(--must)}
+  .chip[data-cat="kayak"] .dot{background:var(--kayak)}
+  .chip[data-cat="bar"] .dot{background:var(--bar)}
+  .chip[data-cat="mus"] .dot{background:var(--mus)}
+  .chip[data-cat="alt"] .dot{background:var(--alt)}
+  .chip[data-cat="rnd"] .dot{background:var(--rnd)}
+  .chip[data-cat="des"] .dot{background:var(--des)}
+  .chip[data-cat="all"] .dot{background:conic-gradient(var(--must) 0 14.3%,var(--kayak) 14.3% 28.6%,var(--bar) 28.6% 42.9%,var(--mus) 42.9% 57.1%,var(--alt) 57.1% 71.4%,var(--rnd) 71.4% 85.7%,var(--des) 85.7% 100%)}
+  .chip.off{opacity:.45}
+  .chip.off .dot{background:#9aa3ab !important}
+
+  /* ---------- Marker ---------- */
+  .pin{
+    display:flex;align-items:center;justify-content:center;
+    width:38px;height:38px;border-radius:50% 50% 50% 6px;
+    transform:rotate(0deg);
+    font-size:19px;line-height:1;
+    border:2.5px solid #fff;
+    box-shadow:0 3px 10px rgba(100,18,58,.35);
+  }
+  .pin.must{background:var(--must)}
+  .pin.kayak{background:var(--kayak)}
+  .pin.bar{background:var(--bar)}
+  .pin.mus{background:var(--mus)}
+  .pin.alt{background:var(--alt)}
+  .pin.rnd{background:var(--rnd)}
+  .pin.des{background:var(--des)}
+
+  /* ---------- Bottom Sheet ---------- */
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    background:#fff;border-radius:22px 22px 0 0;
+    box-shadow:0 -8px 32px rgba(100,18,58,.22);
+    padding:10px 20px calc(var(--sab) + 20px);
+    transform:translateY(110%);
+    transition:transform .28s cubic-bezier(.32,.72,.3,1);
+    max-height:55vh;overflow-y:auto;
+  }
+  .sheet.open{transform:translateY(0)}
+  .grabber{width:40px;height:4px;border-radius:2px;background:#d5dade;margin:0 auto 12px}
+  .sheet .tag{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:4px 10px;border-radius:999px;color:#fff;margin-bottom:8px;
+  }
+  .sheet .tag.must{background:var(--must)}
+  .sheet .tag.kayak{background:var(--kayak)}
+  .sheet .tag.bar{background:var(--bar)}
+  .sheet .tag.mus{background:var(--mus)}
+  .sheet .tag.alt{background:var(--alt)}
+  .sheet .tag.rnd{background:var(--rnd)}
+  .sheet .tag.des{background:var(--des)}
+  .sheet h2{font-size:1.25rem;font-weight:800;line-height:1.25;margin-bottom:6px}
+  .sheet .note{font-size:.92rem;line-height:1.55;color:#454c53}
+  .sheet .meta{font-size:.8rem;color:#79828a;margin-top:10px}
+  .sheet a.route{
+    display:inline-block;margin-top:14px;
+    background:var(--lake);color:#fff;text-decoration:none;
+    font-size:.88rem;font-weight:700;
+    padding:11px 18px;border-radius:12px;
+  }
+  .sheet a.route:active{background:var(--lake-dark)}
+
+  /* ---------- Eigener Standort ---------- */
+  .me-dot{
+    width:18px;height:18px;border-radius:50%;
+    background:#1a73e8;border:3px solid #fff;
+    box-shadow:0 0 0 2px rgba(26,115,232,.35),0 2px 8px rgba(100,18,58,.3);
+  }
+  .me-pulse{animation:pulse 2s ease-out infinite}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 2px rgba(26,115,232,.35),0 0 0 0 rgba(26,115,232,.45)}
+    70%{box-shadow:0 0 0 2px rgba(26,115,232,.35),0 0 0 18px rgba(26,115,232,0)}
+    100%{box-shadow:0 0 0 2px rgba(26,115,232,.35),0 0 0 0 rgba(26,115,232,0)}
+  }
+  @media (prefers-reduced-motion:reduce){.me-pulse{animation:none}}
+  .locate-btn{
+    position:fixed;right:14px;bottom:calc(var(--sab) + 24px);z-index:25;
+    width:52px;height:52px;border-radius:50%;border:none;
+    background:#fff;color:var(--lake);font-size:22px;
+    box-shadow:var(--shadow);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s ease;
+  }
+  .locate-btn:active{transform:scale(.92)}
+  .locate-btn.active{background:var(--lake);color:#fff}
+
+  /* Leaflet Bedienelemente unter die Chips schieben */
+  .leaflet-top{top:calc(var(--sat) + 118px)}
+  .leaflet-control-attribution{font-size:9px}
+
+  /* ---------- Desktop-Anpassung (mobile first, dann hoch) ---------- */
+  @media (min-width:760px){
+    header{left:20px;right:auto;width:380px}
+    .sheet{left:20px;right:auto;width:380px;border-radius:22px;bottom:20px;max-height:50vh}
+    .leaflet-top{top:20px}
+    .leaflet-left{left:auto;right:10px}
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<header>
+  <div class="title-card">
+    <h1>Mexico-City: Must-sees, Kajak, Cantinas &amp; mehr</h1>
+    <p>Antippen für Details · Chips filtern die Karte</p>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip" data-cat="all"><span class="dot"></span>Alle</button>
+    <button class="chip" data-cat="must"><span class="dot"></span>⭐ Must-sees</button>
+    <button class="chip" data-cat="kayak"><span class="dot"></span>🛶 Kajak</button>
+    <button class="chip" data-cat="bar"><span class="dot"></span>🍸 Cantinas</button>
+    <button class="chip" data-cat="mus"><span class="dot"></span>🖼️ Museen</button>
+    <button class="chip" data-cat="alt"><span class="dot"></span>🎨 Alternativ</button>
+    <button class="chip" data-cat="rnd"><span class="dot"></span>🎲 Random</button>
+    <button class="chip" data-cat="des"><span class="dot"></span>📐 Design</button>
+  </div>
+</header>
+
+<button class="locate-btn" id="locateBtn" aria-label="Meinen Standort anzeigen" title="Mein Standort">➤</button>
+
+<div class="sheet" id="sheet">
+  <div class="grabber"></div>
+  <span class="tag" id="sheetTag"></span>
+  <h2 id="sheetTitle"></h2>
+  <p class="note" id="sheetNote"></p>
+  <p class="meta" id="sheetMeta"></p>
+  <a class="route" id="sheetRoute" target="_blank" rel="noopener">Route in Google Maps</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATS = {
+  must:  {label:"Must-see",     emoji:"⭐"},
+  kayak: {label:"Kajak",        emoji:"🛶"},
+  bar:   {label:"Bar & Cantina", emoji:"🍸"},
+  mus:   {label:"Museum",       emoji:"🖼️"},
+  alt:   {label:"Alternativ",   emoji:"🎨"},
+  rnd:   {label:"Random Sight", emoji:"🎲"},
+  des:   {label:"Design & Architektur", emoji:"📐"}
+};
+
+const PLACES = [
+  // ---------- Must-sees ----------
+  {cat:"must", name:"Zócalo & Kathedrale", lat:19.432647, lng:-99.133199,
+   note:"Einer der grössten Plätze der Welt, seit aztekischer Zeit das Zentrum des Landes. An der Nordseite die gewaltige, langsam absinkende Kathedrale, drumherum Paläste aus Vulkanstein.",
+   meta:"Centro Histórico, frei zugänglich"},
+  {cat:"must", name:"Templo Mayor", lat:19.435062, lng:-99.131432,
+   note:"Die Ruinen des aztekischen Haupttempels, erst 1978 direkt neben der Kathedrale wieder entdeckt. Das Museum zeigt die Funde, darunter den monumentalen Stein der Mondgöttin Coyolxauhqui.",
+   meta:"Di bis So · Eintritt"},
+  {cat:"must", name:"Palacio de Bellas Artes", lat:19.435501, lng:-99.141259,
+   note:"Marmorpalast mit Jugendstil-Fassade und Art-déco-Innenleben, dazu Wandbilder von Rivera, Orozco und Siqueiros. Der beste Blick auf die orange Kuppel: vom Café im 8. Stock des Sears-Hauses gegenüber.",
+   meta:"Museum Di bis So · Park Alameda daneben"},
+  {cat:"must", name:"Chapultepec & Castillo", lat:19.420463, lng:-99.182087,
+   note:"Doppelt so gross wie der Central Park: Seen, Museen und auf dem Hügel das einzige echte Schloss Nordamerikas, einst Sitz von Kaiser Maximilian. Oben Rundblick über den Paseo de la Reforma.",
+   meta:"Castillo Di bis So · Park frei"},
+  {cat:"must", name:"Museo Nacional de Antropología", lat:19.426152, lng:-99.186652,
+   note:"Eines der grossen Museen der Welt: der aztekische Sonnenstein, Maya-Grabschätze und der schwebende Beton-Schirm über dem Innenhof. Für die Highlights einen halben Tag einplanen.",
+   meta:"Di bis So 9 bis 18 Uhr"},
+  {cat:"must", name:"Xochimilco (Trajineras)", lat:19.252056, lng:-99.093350,
+   note:"Auf bunt bemalten Trajinera-Booten durch die letzten aztekischen Kanäle staken lassen, UNESCO-Welterbe. Am Wochenende schwimmende Party mit Mariachi, unter der Woche fast still.",
+   meta:"Embarcadero Nuevo Nativitas · Boot pro Stunde"},
+  {cat:"must", name:"Teotihuacán", lat:19.692500, lng:-98.843900,
+   note:"Sonnen- und Mondpyramide an der Strasse der Toten, gebaut lange vor den Azteken. Früh hinfahren wegen Hitze und Bussen; das Besteigen der Pyramiden ist inzwischen gesperrt.",
+   meta:"50 km nordöstlich · Bus ab Terminal Norte oder Tour"},
+  {cat:"must", name:"Coyoacán", lat:19.349261, lng:-99.163669,
+   note:"Koloniales Dorf in der Stadt: Kopfsteinpflaster, Plätze mit Kaffeehäusern, der Markt mit den berühmten Tostadas. Perfekt mit der Casa Azul von Frida Kahlo kombinierbar.",
+   meta:"Jardín Centenario als Startpunkt"},
+  {cat:"must", name:"Basílica de Guadalupe", lat:19.484858, lng:-99.117857,
+   note:"Wichtigster Wallfahrtsort Amerikas: die alte Basilika sinkt schief in den Boden, daneben der riesige Rundbau von 1976. Am Gnadenbild fährt ein Laufband vorbei, damit niemand stehen bleibt.",
+   meta:"Täglich · Villa de Guadalupe"},
+
+  // ---------- Kajak ----------
+  {cat:"kayak", name:"Embarcadero Cuemanco (Kajak)", lat:19.289158, lng:-99.101753,
+   note:"Der ruhige Zugang nach Xochimilco: Kajak- und Kanuverleih abseits des Trajinera-Trubels. Durch stille Kanäle zwischen Chinampa-Feldern paddeln, mit etwas Glück Reiher und Eisvögel.",
+   meta:"Verleih und geführte Touren, morgens am schönsten"},
+  {cat:"kayak", name:"Pista Olímpica Virgilio Uribe", lat:19.282355, lng:-99.104547,
+   note:"Die Ruder- und Kanustrecke der Olympischen Spiele 1968: ein 2 km langes, schnurgerades Wasserband. Heute Trainingsrevier, am Rand Lauf- und Velowege.",
+   meta:"Cuemanco, neben dem Embarcadero"},
+  {cat:"kayak", name:"Isla de las Muñecas", lat:19.272245, lng:-99.088708,
+   note:"Die berüchtigte Puppeninsel tief in den Kanälen: hunderte verwitterte Puppen, die der Einsiedler Don Julián über Jahrzehnte aufhängte. Nur per Boot oder Kajak erreichbar, gut 2 Stunden ab Cuemanco.",
+   meta:"Lange Tour, Verleih fragen"},
+  {cat:"kayak", name:"Parque Ecológico de Xochimilco", lat:19.293688, lng:-99.096242,
+   note:"Feuchtgebiet-Schutzzone mit Lagunen und Vogelbeobachtung, hier laufen die Zuchtprojekte für den Axolotl. Der stille Gegenpol zum Partyteil von Xochimilco.",
+   meta:"Periférico Sur · Eintritt günstig"},
+  {cat:"kayak", name:"Valle de Bravo", lat:19.201123, lng:-100.131536,
+   note:"Bergsee-Städtchen und Wochenendziel: Kajak, Segeln und SUP auf dem Stausee, drumherum Pinienwälder und Gleitschirme. Als Tagesausflug machbar, mit Übernachtung besser.",
+   meta:"Gut 2 Std. westlich · Pueblo Mágico"},
+
+  // ---------- Bars & Cantinas ----------
+  {cat:"bar", name:"Handshake Speakeasy", lat:19.425700, lng:-99.165345,
+   note:"Aktuell die Nummer 1 der „World's 50 Best Bars“: verstecktes Art-déco-Lokal mit präzisen, fast wissenschaftlichen Cocktails. Ohne Reservation chancenlos.",
+   meta:"Amberes 65, Juárez · abends"},
+  {cat:"bar", name:"Licorería Limantour", lat:19.418150, lng:-99.159526,
+   note:"Die Bar, die Mexikos Cocktailszene begründet hat, seit Jahren in den Welt-Top-Ten. Lauter und zugänglicher als Handshake, Klassiker ist der Margarita al Pastor.",
+   meta:"Álvaro Obregón 106, Roma Norte"},
+  {cat:"bar", name:"Cantina La Ópera", lat:19.434725, lng:-99.139331,
+   note:"Prunk-Cantina von 1876 mit vergoldeter Decke und dunklem Holz. Oben im Plafond steckt angeblich noch das Einschussloch von Pancho Villa.",
+   meta:"5 de Mayo 10, Centro · Küche mittags gut"},
+  {cat:"bar", name:"Salón Tenampa", lat:19.441034, lng:-99.138961,
+   note:"Seit 1925 die Mutter aller Mariachi-Cantinas an der Plaza Garibaldi: Wandbilder der Ranchera-Legenden, Tequila im Caballito und Kapellen, die am Tisch spielen.",
+   meta:"Plaza Garibaldi · abends, Taxi zurück"},
+  {cat:"bar", name:"Bósforo Mezcalería", lat:19.433000, lng:-99.144900,
+   note:"Halbdunkle, winzige Mezcal-Bar hinter unscheinbarer Tür: seltene Dorf-Mezcales, Vinyl und Kerzenlicht. Puristisch, kein Cocktail-Schnickschnack.",
+   meta:"Luis Moya 31, Centro · spät"},
+  {cat:"bar", name:"Pulquería Los Insurgentes", lat:19.419367, lng:-99.164043,
+   note:"Pulque, das vergorene Agavengetränk der Azteken, in jung: mehrere Stockwerke, Wandbilder, Curados in Geschmacksrichtungen von Hafer bis Guave.",
+   meta:"Insurgentes Sur 226, Roma"},
+
+  // ---------- Museen ----------
+  {cat:"mus", name:"Museo Frida Kahlo (Casa Azul)", lat:19.355141, lng:-99.162356,
+   note:"Fridas kobaltblaues Geburts- und Sterbehaus: Atelier, Küche, Korsette und der Garten. Tickets müssen zwingend vorab online gekauft werden, vor Ort gibt es keine.",
+   meta:"Londres 247, Coyoacán · Di bis So"},
+  {cat:"mus", name:"Museo Jumex", lat:19.440553, lng:-99.203635,
+   note:"Die wichtigste private Sammlung zeitgenössischer Kunst Lateinamerikas, unter dem Sägezahndach von David Chipperfield. Direkt gegenüber dem Soumaya, das Duo lohnt sich.",
+   meta:"Nuevo Polanco · Di bis So"},
+  {cat:"mus", name:"Museo Tamayo", lat:19.425802, lng:-99.181710,
+   note:"Internationale Gegenwartskunst im preisgekrönten Betonbau von 1981, mitten im Chapultepec-Wald. Klein genug für einen entspannten Besuch.",
+   meta:"Chapultepec · Di bis So"},
+  {cat:"mus", name:"Museo de Arte Moderno", lat:19.422990, lng:-99.179606,
+   note:"Die mexikanische Moderne: Frida Kahlos „Die zwei Fridas“, Remedios Varo und Skulpturengarten unter alten Bäumen.",
+   meta:"Chapultepec · Di bis So"},
+  {cat:"mus", name:"Museo Anahuacalli", lat:19.322579, lng:-99.144077,
+   note:"Diego Riveras selbst entworfener Tempel aus schwarzem Vulkanstein für seine 50000 präkolumbischen Figuren. Düster, monumental und viel zu wenig besucht.",
+   meta:"San Pablo Tepetlapa · Kombiticket mit Casa Azul"},
+  {cat:"mus", name:"MUAC (UNAM)", lat:19.314781, lng:-99.185438,
+   note:"Zeitgenössische Kunst im schrägen Glasbau von Teodoro González de León auf dem Unigelände. Junges Publikum, mutige Ausstellungen.",
+   meta:"Ciudad Universitaria · Mi bis So"},
+  {cat:"mus", name:"Museo Nacional de Arte (MUNAL)", lat:19.436458, lng:-99.139087,
+   note:"Mexikanische Kunst vom Barock bis 1950 in einem Palast von 1904, davor die Reiterstatue auf der stillen Plaza Tolsá. Allein das Treppenhaus lohnt den Besuch.",
+   meta:"Tacuba 8, Centro · Di bis So"},
+
+  // ---------- Alternativ ----------
+  {cat:"alt", name:"Roma Norte", lat:19.421700, lng:-99.160572,
+   note:"Das Quartier aus Cuaróns Film „Roma“: Jugendstil-Villen, Galerien, Spezialitätenkaffee und Taco-Stände Tür an Tür. Rund um Plaza Río de Janeiro und Álvaro Obregón am dichtesten.",
+   meta:"Zu Fuss erkunden, gegen Abend am besten"},
+  {cat:"alt", name:"Condesa & Parque México", lat:19.411859, lng:-99.169805,
+   note:"Art-déco-Quartier um einen ovalen Park auf der ehemaligen Pferderennbahn: Hundewiesen, Buchläden, Bistros. Entspanntester Spaziergang der Stadt.",
+   meta:"Hipódromo Condesa"},
+  {cat:"alt", name:"Mercado Roma", lat:19.414124, lng:-99.164591,
+   note:"Gourmet-Markthalle auf drei Etagen mit Ständen von Churros bis Ceviche, oben Biergarten auf der Dachterrasse. Der moderne Kontrast zu den klassischen Märkten.",
+   meta:"Querétaro 225, Roma Norte"},
+  {cat:"alt", name:"Bazar Sábado (San Ángel)", lat:19.344503, lng:-99.192318,
+   note:"Samstags verwandelt sich das koloniale San Ángel in einen Kunsthandwerksmarkt: Maler auf der Plaza, Textilien und Silber in den Innenhöfen.",
+   meta:"Plaza San Jacinto · nur Samstag"},
+  {cat:"alt", name:"Tianguis Cultural del Chopo", lat:19.448763, lng:-99.149933,
+   note:"Seit 1980 der Subkultur-Markt der Stadt: Punk, Goth und Metal, Vinyl, Patches und Live-Bands am Ende der Gasse. Jeden Samstag, ein Unikum in Lateinamerika.",
+   meta:"Aldama, Buenavista · Sa mittags"},
+  {cat:"alt", name:"Cineteca Nacional", lat:19.360634, lng:-99.164840,
+   note:"Das nationale Filmarchiv unter einem spektakulären weissen Dachgitter: Autorenkino, Open-Air-Vorführungen und Buchhandlung. Abends schön belebt.",
+   meta:"Xoco, bei Coyoacán · täglich"},
+
+  // ---------- Random Sights ----------
+  {cat:"rnd", name:"Casa de los Azulejos", lat:19.434352, lng:-99.140123,
+   note:"Stadtpalast aus dem 18. Jahrhundert, komplett mit blau-weissen Talavera-Kacheln verkleidet. Innen ein Sanborns-Kaufhaus mit Restaurant im Säulenhof, einfach reinlaufen.",
+   meta:"Madero 4, Centro · täglich"},
+  {cat:"rnd", name:"Torre Latinoamericana", lat:19.433866, lng:-99.140611,
+   note:"Der Wolkenkratzer von 1956, der die grossen Erdbeben unbeschadet überstand. Aussichtsplattform im 44. Stock, bei klarer Sicht bis zu den Vulkanen.",
+   meta:"Eje Central / Madero · bis spät offen"},
+  {cat:"rnd", name:"Monumento a la Revolución", lat:19.436175, lng:-99.154621,
+   note:"Grösster Triumphbogen der Welt, geplant als Parlamentskuppel, von der Revolution gestoppt. Der gläserne Lift fährt zur Aussichtsterrasse unter der Kupferkuppel.",
+   meta:"Plaza de la República · täglich"},
+  {cat:"rnd", name:"Mercado de Sonora", lat:19.422071, lng:-99.124688,
+   note:"Der „Hexenmarkt“: Heilkräuter, Amulette, Santa-Muerte-Figuren und Limpia-Reinigungsrituale zwischen Töpfen und Partyartikeln. Nichts für zarte Nasen, aber einmalig.",
+   meta:"Merced Balbuena · tagsüber, auf Taschen achten"},
+  {cat:"rnd", name:"Ángel de la Independencia", lat:19.427000, lng:-99.167669,
+   note:"Die goldene Siegesgöttin von 1910 auf ihrer Säule, Treffpunkt für alles von Meisterfeiern bis Demos. Sonntags ist die Reforma autofrei und gehört den Velos.",
+   meta:"Paseo de la Reforma"},
+  {cat:"rnd", name:"Espacio Escultórico (UNAM)", lat:19.318546, lng:-99.182536,
+   note:"Land-Art von 1979: ein Ring aus 64 Betonkeilen um ein schwarzes Lavafeld, dahinter Steppe und Vulkangestein. Karg, still und fotogen wie kaum ein Ort der Stadt.",
+   meta:"Ciudad Universitaria · tagsüber"},
+  {cat:"rnd", name:"Museo del Juguete Antiguo (MUJAM)", lat:19.415373, lng:-99.144101,
+   note:"Obsessive Privatsammlung von über 40000 alten Spielsachen auf vier verstaubten Etagen: Lucha-Libre-Masken, Blechroboter, Puppen. Wunderkammer statt Museum.",
+   meta:"Dr. Olvera 15, Doctores · Di bis So"},
+
+  // ---------- Design & Architektur ----------
+  {cat:"des", name:"Casa Luis Barragán", lat:19.411122, lng:-99.192440,
+   note:"Wohnhaus und Atelier des Lichtmeisters, UNESCO-Welterbe: rosa Wände, gelenktes Licht, gerahmte Gärten. Besuch nur mit vorab gebuchter Führung, Wochen im Voraus reservieren.",
+   meta:"General Francisco Ramírez 12 · nur mit Tour"},
+  {cat:"des", name:"Biblioteca Vasconcelos", lat:19.447486, lng:-99.150807,
+   note:"Alberto Kalachs „Megabibliothek“: Regale, die in einem gigantischen Stahlraum zu schweben scheinen, dazwischen Gabriel Orozcos bemaltes Walskelett. Eintritt frei.",
+   meta:"Buenavista · täglich"},
+  {cat:"des", name:"Museo Soumaya", lat:19.440782, lng:-99.204566,
+   note:"Der silbern schimmernde, fensterlose Turm von Fernando Romero, verkleidet mit 16000 Aluminium-Sechsecken. Innen u. a. Rodin-Skulpturen, Eintritt gratis.",
+   meta:"Nuevo Polanco · täglich, gratis"},
+  {cat:"des", name:"Biblioteca Central (UNAM)", lat:19.333401, lng:-99.187331,
+   note:"Der Bibliotheksturm, dessen vier Fassaden Juan O'Gorman komplett mit Naturstein-Mosaiken zur mexikanischen Geschichte überzog. Herz des UNESCO-Campus der UNAM.",
+   meta:"Ciudad Universitaria · von aussen"},
+  {cat:"des", name:"Torres de Satélite", lat:19.499250, lng:-99.236861,
+   note:"Fünf farbige Betontürme von Luis Barragán und Mathias Goeritz (1958), gebaut als Tor zur Trabantenstadt, heute Ikone der emotionalen Architektur. Stehen mitten auf dem Periférico.",
+   meta:"Naucalpan · im Vorbeifahren oder kurzer Stopp"},
+  {cat:"des", name:"Palacio Postal", lat:19.435663, lng:-99.140284,
+   note:"Die Hauptpost von 1907: goldene Treppen, Schmiedebronze und ein Stilmix aus Gotik und Renaissance von Adamo Boari, dem Architekten des Bellas Artes. Immer noch eine Poststelle.",
+   meta:"Tacuba 1, Centro · werktags"}
+];
+
+// ---------- Karte ----------
+const map = L.map('map', {zoomControl:true}).setView([19.39, -99.15], 11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
+}).addTo(map);
+
+const markers = [];
+PLACES.forEach(p => {
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="pin ${p.cat}">${CATS[p.cat].emoji}</div>`,
+    iconSize:[38,38], iconAnchor:[19,36]
+  });
+  const m = L.marker([p.lat, p.lng], {icon}).addTo(map);
+  m.on('click', () => openSheet(p));
+  m._cat = p.cat;
+  markers.push(m);
+});
+
+// ---------- Bottom Sheet ----------
+const sheet = document.getElementById('sheet');
+function openSheet(p){
+  document.getElementById('sheetTag').textContent = CATS[p.cat].emoji + ' ' + CATS[p.cat].label;
+  document.getElementById('sheetTag').className = 'tag ' + p.cat;
+  document.getElementById('sheetTitle').textContent = p.name;
+  document.getElementById('sheetNote').textContent = p.note;
+  document.getElementById('sheetMeta').textContent = p.meta || '';
+  document.getElementById('sheetRoute').href =
+    'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng;
+  sheet.classList.add('open');
+  map.panTo([p.lat, p.lng], {animate:true});
+}
+map.on('click', () => sheet.classList.remove('open'));
+
+// Swipe nach unten schliesst das Sheet
+let startY = null;
+sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive:true});
+sheet.addEventListener('touchmove', e => {
+  if(startY !== null && e.touches[0].clientY - startY > 60){
+    sheet.classList.remove('open'); startY = null;
+  }
+}, {passive:true});
+
+// ---------- Filter ----------
+const state = {};
+Object.keys(CATS).forEach(k => state[k] = true);
+const allOn = () => Object.keys(CATS).every(k => state[k]);
+function applyFilter(){
+  markers.forEach(m => {
+    if(state[m._cat]) m.addTo(map); else map.removeLayer(m);
+  });
+  document.querySelectorAll('.chip').forEach(c => {
+    const cat = c.dataset.cat;
+    if(cat === 'all'){
+      c.classList.toggle('off', !allOn());
+    } else {
+      c.classList.toggle('off', !state[cat]);
+    }
+  });
+}
+document.getElementById('chips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  const cat = chip.dataset.cat;
+  if(cat === 'all'){
+    Object.keys(CATS).forEach(k => state[k] = true);
+  } else {
+    // Wenn aktuell alle an sind: nur diese Kategorie zeigen
+    if(allOn()){
+      Object.keys(CATS).forEach(k => state[k] = false);
+      state[cat] = true;
+    } else {
+      state[cat] = !state[cat];
+      if(Object.keys(CATS).every(k => !state[k])){
+        Object.keys(CATS).forEach(k => state[k] = true);
+      }
+    }
+  }
+  applyFilter();
+  sheet.classList.remove('open');
+});
+applyFilter();
+
+// ---------- Eigener Standort ----------
+const locateBtn = document.getElementById('locateBtn');
+let watchId = null, meMarker = null, meCircle = null, firstFix = true;
+
+const meIcon = L.divIcon({
+  className:'',
+  html:'<div class="me-dot me-pulse"></div>',
+  iconSize:[18,18], iconAnchor:[9,9]
+});
+
+function onFix(pos){
+  const ll = [pos.coords.latitude, pos.coords.longitude];
+  if(!meMarker){
+    meMarker = L.marker(ll, {icon:meIcon, zIndexOffset:1000, interactive:false}).addTo(map);
+    meCircle = L.circle(ll, {
+      radius:pos.coords.accuracy,
+      color:'#1a73e8', weight:1, opacity:.4,
+      fillColor:'#1a73e8', fillOpacity:.1, interactive:false
+    }).addTo(map);
+  } else {
+    meMarker.setLatLng(ll);
+    meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
+  }
+  if(firstFix){
+    map.setView(ll, Math.max(map.getZoom(), 14), {animate:true});
+    firstFix = false;
+  }
+}
+
+function onErr(err){
+  stopLocate();
+  alert('Standort nicht verfügbar. Bitte Ortungsdienste erlauben (funktioniert nur über HTTPS).');
+}
+
+function startLocate(){
+  if(!('geolocation' in navigator)){ alert('Dieses Gerät unterstützt keine Ortung.'); return; }
+  firstFix = true;
+  watchId = navigator.geolocation.watchPosition(onFix, onErr, {
+    enableHighAccuracy:true, maximumAge:10000, timeout:15000
+  });
+  locateBtn.classList.add('active');
+}
+
+function stopLocate(){
+  if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+  if(meMarker){ map.removeLayer(meMarker); meMarker = null; }
+  if(meCircle){ map.removeLayer(meCircle); meCircle = null; }
+  locateBtn.classList.remove('active');
+}
+
+locateBtn.addEventListener('click', () => {
+  if(watchId !== null){
+    if(meMarker) map.setView(meMarker.getLatLng(), Math.max(map.getZoom(), 15), {animate:true});
+    else stopLocate();
+  } else {
+    startLocate();
+  }
+});
+locateBtn.addEventListener('dblclick', stopLocate);
+
+// Beim Laden automatisch versuchen (Browser fragt nach Erlaubnis)
+startLocate();
+</script>
+</body>
+</html>
