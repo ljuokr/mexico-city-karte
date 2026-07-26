@@ -241,6 +241,9 @@ const PLACES = [
   {cat:"must", name:"Basílica de Guadalupe", lat:19.484858, lng:-99.117857,
    note:"Wichtigster Wallfahrtsort Amerikas: die alte Basilika sinkt schief in den Boden, daneben der riesige Rundbau von 1976. Am Gnadenbild fährt ein Laufband vorbei, damit niemand stehen bleibt.",
    meta:"Täglich · Villa de Guadalupe"},
+  {cat:"must", name:"Palacio Nacional", lat:19.432554, lng:-99.131267,
+   note:"Der Regierungspalast füllt die ganze Ostseite des Zócalo. Über dem Treppenhaus Diego Riveras monumentales Wandbild-Epos zur Geschichte Mexikos, im Obergeschoss weitere Fresken. Eintritt frei, Ausweis mitnehmen.",
+   meta:"Zócalo, Eingang Moneda · Di bis So, gratis"},
 
   // ---------- Kajak ----------
   {cat:"kayak", name:"Embarcadero Cuemanco (Kajak)", lat:19.289158, lng:-99.101753,
@@ -301,6 +304,15 @@ const PLACES = [
   {cat:"mus", name:"Museo Nacional de Arte (MUNAL)", lat:19.436458, lng:-99.139087,
    note:"Mexikanische Kunst vom Barock bis 1950 in einem Palast von 1904, davor die Reiterstatue auf der stillen Plaza Tolsá. Allein das Treppenhaus lohnt den Besuch.",
    meta:"Tacuba 8, Centro · Di bis So"},
+  {cat:"mus", name:"Museo de Arte Popular", lat:19.433979, lng:-99.146260,
+   note:"Volkskunst vom Feinsten in einem Art-déco-Feuerwehrhaus: Alebrijes, Textilien, Keramik und Lackarbeiten aus allen Regionen. Als Fundgrube für Techniken und Muster kaum zu überbieten.",
+   meta:"Revillagigedo 11, Centro · Di bis So"},
+  {cat:"mus", name:"Museo Mural Diego Rivera", lat:19.436200, lng:-99.146809,
+   note:"Ein Museum für ein einziges Wandbild: Riveras „Sonntagnachmittagstraum in der Alameda“ mit hunderten Figuren der mexikanischen Geschichte, nach dem Erdbeben von 1985 hierher gerettet. Klein und stark.",
+   meta:"Balderas / Colón, an der Alameda · Di bis So"},
+  {cat:"mus", name:"Museo Franz Mayer", lat:19.437312, lng:-99.143183,
+   note:"Angewandte Kunst und Design in einem alten Hospiz: Möbel, Keramik, Silber und Textilien aus vier Jahrhunderten, dazu Wechselausstellungen zu Gestaltung und Fotografie. Stiller Kreuzgang-Innenhof.",
+   meta:"Av. Hidalgo 45, an der Alameda · Di bis So"},
 
   // ---------- Alternativ ----------
   {cat:"alt", name:"Roma Norte", lat:19.421700, lng:-99.160572,
@@ -321,6 +333,15 @@ const PLACES = [
   {cat:"alt", name:"Cineteca Nacional", lat:19.360634, lng:-99.164840,
    note:"Das nationale Filmarchiv unter einem spektakulären weissen Dachgitter: Autorenkino, Open-Air-Vorführungen und Buchhandlung. Abends schön belebt.",
    meta:"Xoco, bei Coyoacán · täglich"},
+  {cat:"alt", name:"Lucha Libre (Arena México)", lat:19.424614, lng:-99.152001,
+   note:"Maskierte Luchadores, Flugeinlagen und ein tobendes Publikum mit Bier und Chips: die grosse Arena von 1956 ist das Herz des mexikanischen Wrestlings. Tickets meist an der Abendkasse, danach zügig ins Taxi.",
+   meta:"Doctores · Di und Fr abends, So nachmittags"},
+  {cat:"alt", name:"Mercado de Jamaica", lat:19.408603, lng:-99.122704,
+   note:"Der grosse Blumenmarkt der Stadt, rund um die Uhr offen: Berge von Rosen und Sonnenblumen, Ofrenda-Schmuck und Gestecke aus tausenden Blüten. Ein Farbrausch, morgens am üppigsten.",
+   meta:"Colonia Jamaica · täglich 24 Std."},
+  {cat:"alt", name:"La Ciudadela (Kunsthandwerk)", lat:19.430761, lng:-99.149161,
+   note:"Kunsthandwerk-Markt mit Ständen aus dem ganzen Land: Textilien, Keramik, Alebrijes, Silber, Flechtwerk. Faire, feste Preise und viel Ware direkt aus den Werkstätten, ideal für Mitbringsel.",
+   meta:"Balderas / Ayuntamiento · täglich"},
 
   // ---------- Random Sights ----------
   {cat:"rnd", name:"Casa de los Azulejos", lat:19.434352, lng:-99.140123,
@@ -344,8 +365,17 @@ const PLACES = [
   {cat:"rnd", name:"Museo del Juguete Antiguo (MUJAM)", lat:19.415373, lng:-99.144101,
    note:"Obsessive Privatsammlung von über 40000 alten Spielsachen auf vier verstaubten Etagen: Lucha-Libre-Masken, Blechroboter, Puppen. Wunderkammer statt Museum.",
    meta:"Dr. Olvera 15, Doctores · Di bis So"},
+  {cat:"rnd", name:"Kiosco Morisco", lat:19.449664, lng:-99.156855,
+   note:"Filigraner maurischer Pavillon aus Gusseisen, gebaut für eine Weltausstellung des 19. Jahrhunderts und später im Quartier Santa María la Ribera wieder aufgebaut. Sonntags wird darunter Danzón getanzt.",
+   meta:"Santa María la Ribera · frei zugänglich"},
+  {cat:"rnd", name:"Plaza de las Tres Culturas", lat:19.451646, lng:-99.136205,
+   note:"Drei Epochen auf einem Platz: die aztekischen Ruinen von Tlatelolco, eine Kolonialkirche aus deren Steinen und die Moderne der 1960er-Wohnblöcke. Zugleich Gedenkort des Studentenmassakers von 1968.",
+   meta:"Tlatelolco · tagsüber"},
 
   // ---------- Design & Architektur ----------
+  {cat:"des", name:"Casa Estudio Diego Rivera y Frida Kahlo", lat:19.349560, lng:-99.197330,
+   note:"Juan O'Gormans Doppel-Atelierhaus von 1932: zwei funktionalistische Kuben in Rot und Blau, über eine Dachbrücke verbunden, umzäunt von Kakteen. Eines der frühesten Manifeste der modernen Architektur Amerikas.",
+   meta:"Altavista / Diego Rivera, San Ángel · Di bis So"},
   {cat:"des", name:"Casa Luis Barragán", lat:19.411122, lng:-99.192440,
    note:"Wohnhaus und Atelier des Lichtmeisters, UNESCO-Welterbe: rosa Wände, gelenktes Licht, gerahmte Gärten. Besuch nur mit vorab gebuchter Führung, Wochen im Voraus reservieren.",
    meta:"General Francisco Ramírez 12 · nur mit Tour"},
