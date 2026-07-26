@@ -152,7 +152,6 @@
   .me-beam{
     position:absolute;inset:0;border-radius:50%;display:none;
     background:conic-gradient(from -26deg, rgba(26,115,232,.4) 0 52deg, transparent 52deg);
-    transition:transform .25s ease;
   }
   .me-pulse{animation:pulse 2s ease-out infinite}
   @keyframes pulse{
@@ -683,16 +682,25 @@ const meIcon = L.divIcon({
 
 // Blickrichtung: Kompass (deviceorientation) mit GPS-Kurs als Fallback
 let meHeading = null, compassStarted = false;
+let beamDeg = null; // kontinuierlicher Winkel (ohne Modulo), damit 359°→1° nicht rückwärts dreht
 function setBeam(deg){
   if(!meMarker) return;
   const el = meMarker.getElement() && meMarker.getElement().querySelector('.me-beam');
   if(el){ el.style.display = 'block'; el.style.transform = 'rotate(' + deg + 'deg)'; }
 }
+function smoothBeam(target){
+  if(beamDeg === null){ beamDeg = target; setBeam(beamDeg); return; }
+  // kürzeste Winkeldifferenz, Totzone gegen Sensor-Zittern, sanft nachziehen
+  const d = ((target - (beamDeg % 360) + 540) % 360) - 180;
+  if(Math.abs(d) < 2) return;
+  beamDeg += d * 0.2;
+  setBeam(beamDeg);
+}
 function onOrient(e){
   let h = null;
   if(typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading; // iOS
   else if(e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;      // Android
-  if(h !== null && !isNaN(h)){ meHeading = h; setBeam(h); }
+  if(h !== null && !isNaN(h)){ meHeading = h; smoothBeam(h); }
 }
 function startCompass(){
   if(compassStarted) return;
@@ -725,7 +733,7 @@ function onFix(pos){
   // Ohne Kompass-Daten: Bewegungsrichtung aus dem GPS übernehmen
   if(meHeading === null && typeof pos.coords.heading === 'number' &&
      !isNaN(pos.coords.heading) && pos.coords.speed > 0.5){
-    setBeam(pos.coords.heading);
+    smoothBeam(pos.coords.heading);
   }
   if(firstFix){
     map.setView(ll, Math.max(map.getZoom(), 14), {animate:true});
