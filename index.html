@@ -775,6 +775,15 @@ locateBtn.addEventListener('dblclick', stopLocate);
 
 // Beim Laden automatisch versuchen (Browser fragt nach Erlaubnis)
 startLocate();
+
+// Kompass so früh wie möglich: ohne Permission-API (Android/Desktop) sofort,
+// mit Permission-API (iOS) beim ERSTEN Tippen irgendwo auf der Seite
+if(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission){
+  document.addEventListener('click', startCompass, {once:true});
+  document.addEventListener('touchend', startCompass, {once:true});
+} else {
+  startCompass();
+}
 </script>
 </body>
 </html>
