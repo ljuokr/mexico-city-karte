@@ -101,6 +101,7 @@
   .pin.alt{background:var(--alt)}
   .pin.rnd{background:var(--rnd)}
   .pin.des{background:var(--des)}
+  .pin.own{background:#546e7a}
 
   /* ---------- Bottom Sheet ---------- */
   .sheet{
@@ -126,6 +127,7 @@
   .sheet .tag.alt{background:var(--alt)}
   .sheet .tag.rnd{background:var(--rnd)}
   .sheet .tag.des{background:var(--des)}
+  .sheet .tag.own{background:#546e7a}
   .sheet h2{font-size:1.25rem;font-weight:800;line-height:1.25;margin-bottom:6px}
   .sheet .note{font-size:.92rem;line-height:1.55;color:#454c53}
   .sheet .meta{font-size:.8rem;color:#79828a;margin-top:10px}
@@ -137,12 +139,20 @@
   }
   .sheet a.route:active{background:var(--lake-dark)}
   .sheet a.web{background:#fff;color:var(--lake);border:1.5px solid var(--lake);margin-left:8px}
+  .sheet a.del{background:#fff;color:#b3261e;border:1.5px solid #b3261e;margin-left:8px;cursor:pointer}
 
   /* ---------- Eigener Standort ---------- */
   .me-dot{
     width:18px;height:18px;border-radius:50%;
     background:#1a73e8;border:3px solid #fff;
     box-shadow:0 0 0 2px rgba(26,115,232,.35),0 2px 8px rgba(100,18,58,.3);
+  }
+  .me-rose{position:relative;width:48px;height:48px}
+  .me-rose .me-dot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+  .me-beam{
+    position:absolute;inset:0;border-radius:50%;display:none;
+    background:conic-gradient(from -26deg, rgba(26,115,232,.4) 0 52deg, transparent 52deg);
+    transition:transform .25s ease;
   }
   .me-pulse{animation:pulse 2s ease-out infinite}
   @keyframes pulse{
@@ -215,6 +225,7 @@
   <p class="meta" id="sheetMeta"></p>
   <a class="route" id="sheetRoute" target="_blank" rel="noopener">Route in Google Maps</a>
   <a class="route web" id="sheetWeb" target="_blank" rel="noopener">Website</a>
+  <a class="route del" id="sheetDel" role="button">Pin löschen</a>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -226,7 +237,8 @@ const CATS = {
   mus:   {label:"Museum",       emoji:"🖼️"},
   alt:   {label:"Alternativ",   emoji:"🎨"},
   rnd:   {label:"Random Sight", emoji:"🎲"},
-  des:   {label:"Design & Architektur", emoji:"📐"}
+  des:   {label:"Design & Architektur", emoji:"📐"},
+  own:   {label:"Eigener Pin", emoji:"📍"}
 };
 
 const PLACES = [
@@ -459,6 +471,13 @@ function openSheet(p){
   const web = document.getElementById('sheetWeb');
   if(p.url){ web.href = p.url; web.style.display = ''; }
   else { web.style.display = 'none'; }
+  const del = document.getElementById('sheetDel');
+  if(p.cat === 'own'){
+    del.style.display = '';
+    del.onclick = () => removeOwnPin(p);
+  } else {
+    del.style.display = 'none';
+  }
   sheet.classList.add('open');
   map.panTo([p.lat, p.lng], {animate:true});
 }
@@ -479,6 +498,7 @@ Object.keys(CATS).forEach(k => state[k] = true);
 const allOn = () => Object.keys(CATS).every(k => state[k]);
 function applyFilter(){
   markers.forEach(m => {
+    if(m._cat === 'own') return; // eigene Pins sind immer sichtbar
     if(state[m._cat]) m.addTo(map); else map.removeLayer(m);
   });
   document.querySelectorAll('.chip').forEach(c => {
@@ -514,6 +534,48 @@ document.getElementById('chips').addEventListener('click', e => {
   sheet.classList.remove('open');
 });
 applyFilter();
+
+// ---------- Eigene Pins (nur auf diesem Gerät, localStorage) ----------
+// Long-Press (mobil) bzw. Rechtsklick (Desktop) auf die Karte legt einen Pin an.
+const OWN_KEY = 'mexOwnPins';
+let ownPins = [];
+try { ownPins = JSON.parse(localStorage.getItem(OWN_KEY) || '[]'); } catch(e){ ownPins = []; }
+function saveOwnPins(){ localStorage.setItem(OWN_KEY, JSON.stringify(ownPins)); }
+
+function addOwnMarker(p){
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="pin own">${CATS.own.emoji}</div>`,
+    iconSize:[38,38], iconAnchor:[19,36]
+  });
+  const m = L.marker([p.lat, p.lng], {icon}).addTo(map);
+  m.on('click', () => openSheet(p));
+  m._cat = 'own';
+  m._p = p;
+  markers.push(m);
+}
+ownPins.forEach(addOwnMarker);
+
+function removeOwnPin(p){
+  if(!confirm('Diesen eigenen Pin löschen?')) return;
+  ownPins = ownPins.filter(x => x !== p);
+  saveOwnPins();
+  const i = markers.findIndex(m => m._p === p);
+  if(i > -1){ map.removeLayer(markers[i]); markers.splice(i, 1); }
+  sheet.classList.remove('open');
+}
+
+map.on('contextmenu', e => {
+  const name = prompt('Neuer eigener Pin - Name:');
+  if(!name) return;
+  const note = prompt('Notiz (optional):') || '';
+  const p = {
+    cat:'own', name:name.trim(), note:note.trim(),
+    meta:'Eigener Pin · nur auf diesem Gerät gespeichert',
+    lat:+e.latlng.lat.toFixed(6), lng:+e.latlng.lng.toFixed(6)
+  };
+  ownPins.push(p); saveOwnPins(); addOwnMarker(p); openSheet(p);
+});
 
 // ---------- Sicherheits-Overlay (Kriminalität nach Polizeisektor) ----------
 // Sicherheits-Daten: hoyodecrimen.com API, Zeitraum 2025-06 bis 2026-05,
@@ -566,6 +628,7 @@ function openSectorSheet(name){
     ' Einwohner · Quelle: hoyodecrimen.com / Open Data CDMX';
   document.getElementById('sheetRoute').style.display = 'none';
   document.getElementById('sheetWeb').style.display = 'none';
+  document.getElementById('sheetDel').style.display = 'none';
   sheet.classList.add('open');
 }
 
@@ -614,14 +677,42 @@ let watchId = null, meMarker = null, meCircle = null, firstFix = true;
 
 const meIcon = L.divIcon({
   className:'',
-  html:'<div class="me-dot me-pulse"></div>',
-  iconSize:[18,18], iconAnchor:[9,9]
+  html:'<div class="me-rose"><div class="me-beam"></div><div class="me-dot me-pulse"></div></div>',
+  iconSize:[48,48], iconAnchor:[24,24]
 });
+
+// Blickrichtung: Kompass (deviceorientation) mit GPS-Kurs als Fallback
+let meHeading = null, compassStarted = false;
+function setBeam(deg){
+  if(!meMarker) return;
+  const el = meMarker.getElement() && meMarker.getElement().querySelector('.me-beam');
+  if(el){ el.style.display = 'block'; el.style.transform = 'rotate(' + deg + 'deg)'; }
+}
+function onOrient(e){
+  let h = null;
+  if(typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading; // iOS
+  else if(e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;      // Android
+  if(h !== null && !isNaN(h)){ meHeading = h; setBeam(h); }
+}
+function startCompass(){
+  if(compassStarted) return;
+  compassStarted = true;
+  if(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission){
+    // iOS verlangt eine Nutzer-Geste; Aufruf kommt aus dem Button-Klick
+    DeviceOrientationEvent.requestPermission()
+      .then(s => { if(s === 'granted') window.addEventListener('deviceorientation', onOrient); })
+      .catch(() => {});
+  } else {
+    window.addEventListener('deviceorientationabsolute', onOrient);
+    window.addEventListener('deviceorientation', onOrient);
+  }
+}
 
 function onFix(pos){
   const ll = [pos.coords.latitude, pos.coords.longitude];
   if(!meMarker){
     meMarker = L.marker(ll, {icon:meIcon, zIndexOffset:1000, interactive:false}).addTo(map);
+    if(meHeading !== null) setBeam(meHeading);
     meCircle = L.circle(ll, {
       radius:pos.coords.accuracy,
       color:'#1a73e8', weight:1, opacity:.4,
@@ -630,6 +721,11 @@ function onFix(pos){
   } else {
     meMarker.setLatLng(ll);
     meCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
+  }
+  // Ohne Kompass-Daten: Bewegungsrichtung aus dem GPS übernehmen
+  if(meHeading === null && typeof pos.coords.heading === 'number' &&
+     !isNaN(pos.coords.heading) && pos.coords.speed > 0.5){
+    setBeam(pos.coords.heading);
   }
   if(firstFix){
     map.setView(ll, Math.max(map.getZoom(), 14), {animate:true});
@@ -659,6 +755,7 @@ function stopLocate(){
 }
 
 locateBtn.addEventListener('click', () => {
+  startCompass(); // Nutzer-Geste, nötig für die iOS-Kompass-Erlaubnis
   if(watchId !== null){
     if(meMarker) map.setView(meMarker.getLatLng(), Math.max(map.getZoom(), 15), {animate:true});
     else stopLocate();
