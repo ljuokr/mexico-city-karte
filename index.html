@@ -128,6 +128,7 @@
   .sheet .tag.rnd{background:var(--rnd)}
   .sheet .tag.des{background:var(--des)}
   .sheet .tag.own{background:#546e7a}
+  .sheet .tag.seil{background:#00695c}
   .sheet h2{font-size:1.25rem;font-weight:800;line-height:1.25;margin-bottom:6px}
   .sheet .note{font-size:.92rem;line-height:1.55;color:#454c53}
   .sheet .meta{font-size:.8rem;color:#79828a;margin-top:10px}
@@ -237,7 +238,8 @@ const CATS = {
   alt:   {label:"Alternativ",   emoji:"🎨"},
   rnd:   {label:"Random Sight", emoji:"🎲"},
   des:   {label:"Design & Architektur", emoji:"📐"},
-  own:   {label:"Eigener Pin", emoji:"📍"}
+  own:   {label:"Eigener Pin", emoji:"📍"},
+  seil:  {label:"Teleférico", emoji:"🚠"}
 };
 
 const PLACES = [
@@ -574,6 +576,49 @@ map.on('contextmenu', e => {
     lat:+e.latlng.lat.toFixed(6), lng:+e.latlng.lng.toFixed(6)
   };
   ownPins.push(p); saveOwnPins(); addOwnMarker(p); openSheet(p);
+});
+
+// ---------- Teleféricos (Cablebús CDMX + Mexicable Edomex) ----------
+// Linienverläufe aus OpenStreetMap (Overpass, aerialway=gondola), vereinfacht ~44 m
+const TELEFERICOS = [
+  {name:"Cablebús Línea 1", color:"#00954c",
+   note:"Die erste Cablebús-Linie schwebt seit Juli 2021 von der Metro Indios Verdes über die dicht bebauten Hügel von Gustavo A. Madero hinauf nach Cuautepec und Tlalpexco. Gebaut als ÖV für ein Quartier ohne Bahnanschluss, für Besucher ist sie eine spektakuläre Aussichtsfahrt über das Häusermeer. Bezahlt wird mit der aufladbaren MI-Karte, die Fahrt kostet pauschal M$ 7. Bei Indios Verdes Anschluss an die Metro Linie 3 und ans Mexicable Richtung Ecatepec.",
+   meta:"Indios Verdes bis Cuautepec/Tlalpexco · täglich · M$ 7 (MI-Karte)",
+   url:"https://es.wikipedia.org/wiki/Cablebús",
+   segs:[[[19.49522,-99.12216],[19.51175,-99.13387],[19.52756,-99.1409],[19.5311,-99.14118]],[[19.54059,-99.142],[19.54485,-99.12616]],[[19.5311,-99.14118],[19.54059,-99.142],[19.558,-99.13417]]]},
+  {name:"Cablebús Línea 2", color:"#1565c0",
+   note:"Mit 10,6 km bei der Eröffnung 2021 die längste urbane Seilbahn der Welt: von Constitución de 1917 quer über Iztapalapa bis Santa Marta. Unterwegs schwebt man über tausende Dächer, viele davon eigens für die Seilbahn bunt bemalt, ein Freiluft-Kunstwerk von oben. Bezahlt wird mit der MI-Karte, die Fahrt kostet M$ 7 und dauert über die ganze Länge gut 40 Minuten. An beiden Endstationen Anschluss an die Metro (Linie 8 bzw. Linie A).",
+   meta:"Constitución de 1917 bis Santa Marta · täglich · M$ 7 (MI-Karte)",
+   url:"https://es.wikipedia.org/wiki/Cablebús",
+   segs:[[[19.34488,-99.06253],[19.32785,-99.04351],[19.33621,-99.01903]],[[19.33614,-99.01886],[19.34091,-99.0081],[19.34355,-98.98958],[19.35955,-98.994]]]},
+  {name:"Cablebús Línea 3", color:"#7b1fa2",
+   note:"Die jüngste Cablebús-Linie (2024) verbindet Los Pinos am Rand des Chapultepec-Parks über den Wald hinweg mit Vasco de Quiroga in Santa Fe. Sie ist die touristischste der drei: unter der Kabine ziehen die Sektionen 2 und 3 des Parks vorbei, dazu der Blick auf die Türme von Santa Fe. Zwischenhalt unter anderem bei der neuen Cineteca Nacional im Park. Fahrpreis M$ 7, ideal als Abschluss nach einem Castillo- oder Museumstag.",
+   meta:"Los Pinos (Chapultepec) bis Vasco de Quiroga (Santa Fe) · täglich · M$ 7",
+   url:"https://es.wikipedia.org/wiki/Cablebús",
+   segs:[[[19.3843,-99.23175],[19.39123,-99.22904],[19.39677,-99.22216],[19.39969,-99.21301],[19.41302,-99.1915]]]},
+  {name:"Mexicable Línea 1", color:"#e65100",
+   note:"Die Pionierin: Mexikos erste urbane Seilbahn (2016) führt auf knapp 5 km von Santa Clara die Hänge von Ecatepec hinauf nach La Cañada. Entlang der Strecke wurden dutzende Fassaden von Street-Art-Künstlern bemalt, die Fahrt ist eine Galerie aus der Luft. Betrieben wird sie vom Bundesstaat México, das Ticket ist vom CDMX-System getrennt. Kombinierbar mit der Línea 2, die bei Indios Verdes ans Hauptstadtnetz anschliesst.",
+   meta:"Santa Clara bis La Cañada, Ecatepec · täglich",
+   url:"https://es.wikipedia.org/wiki/Mexicable",
+   segs:[[[19.54023,-99.05876],[19.54912,-99.07449],[19.55631,-99.08061]],[[19.55631,-99.08061],[19.56548,-99.08787],[19.56875,-99.09198]]]},
+  {name:"Mexicable Línea 2", color:"#c62828",
+   note:"Verbindet seit 2023 die Metro Indios Verdes auf gut 8 km mit den Hügelquartieren von Ecatepec und dockt damit das Edomex-Netz direkt an die Hauptstadt an. Für Reisende ist sie vor allem eine eindrückliche Fahrt über die schier endlosen Quartiere der Metropolregion. Umsteigen zur Línea 1 ist an deren Strecke möglich, das Ticket ist vom CDMX-System getrennt. Start am selben Knoten wie Cablebús Línea 1, die Systeme ergänzen sich zum grössten Stadtseilbahn-Netz der Welt.",
+   meta:"Indios Verdes bis Ecatepec · täglich",
+   url:"https://es.wikipedia.org/wiki/Mexicable",
+   segs:[[[19.49825,-99.11826],[19.51255,-99.10711],[19.51761,-99.09845]],[[19.541,-99.09329],[19.54371,-99.07993],[19.54889,-99.07444]],[[19.51761,-99.09845],[19.53353,-99.10064],[19.541,-99.09329]]]},
+  {name:"Mexicable Línea 3", color:"#0097a7",
+   note:"Die neuste der Edomex-Linien startet am Verkehrsknoten Cuatro Caminos beim Toreo und schwenkt von dort in die Hügelquartiere im Westen von Naucalpan. Wie ihre Schwestern ist sie zuerst Alltags-ÖV, nimmt aber nebenbei den Blick über das nordwestliche Häusermeer mit. Das Ticket ist vom CDMX-System getrennt. Für die Karte vor allem als Orientierung eingezeichnet, falls es dich in diese Ecke verschlägt.",
+   meta:"Cuatro Caminos/Toreo Richtung Naucalpan · täglich",
+   url:"https://es.wikipedia.org/wiki/Mexicable",
+   segs:[[[19.44777,-99.27764],[19.44566,-99.26929],[19.44568,-99.25337]],[[19.43639,-99.27117],[19.4396,-99.26179],[19.44588,-99.25303],[19.45722,-99.24238],[19.45959,-99.23789],[19.46386,-99.21846],[19.46343,-99.21561],[19.4614,-99.21535]]]}
+];
+TELEFERICOS.forEach(t => {
+  L.polyline(t.segs, {color:'#fff', weight:8, opacity:.75, interactive:false}).addTo(map);
+  const line = L.polyline(t.segs, {color:t.color, weight:4, opacity:.95,
+    bubblingMouseEvents:false}).addTo(map); // sonst schliesst der map-click-Handler das Sheet sofort
+  const flat = t.segs.flat();
+  const mid = flat[Math.floor(flat.length / 2)];
+  line.on('click', () => openSheet({cat:'seil', name:t.name, note:t.note, meta:t.meta, url:t.url, lat:mid[0], lng:mid[1]}));
 });
 
 // ---------- Sicherheits-Overlay (Kriminalität nach Polizeisektor) ----------
