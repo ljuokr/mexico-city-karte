@@ -443,6 +443,7 @@ const map = L.map('map', {zoomControl:true}).setView([19.39, -99.15], 11);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
 }).addTo(map);
+L.control.scale({imperial:false, maxWidth:140}).addTo(map); // Massstab zum Distanzen-Abschätzen
 
 const markers = [];
 PLACES.forEach(p => {
